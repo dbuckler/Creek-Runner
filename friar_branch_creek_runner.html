@@ -1,0 +1,760 @@
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+#gameContainer { position: relative; width: 680px; height: 460px; overflow: hidden; background: #1a6b8a; font-family: var(--font-sans, sans-serif); user-select: none; }
+canvas { display: block; touch-action: none; }
+#ui { position: absolute; top: 0; left: 0; width: 100%; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.35); color: #fff; font-size: 12px; font-weight: 500; pointer-events: none; z-index: 10; flex-wrap: wrap; gap: 4px; }
+#ui .stat { display: flex; align-items: center; gap: 4px; }
+#powerupBar { position: absolute; top: 32px; right: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 10; pointer-events: none; }
+.pu-slot { background: rgba(0,0,0,0.4); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 3px 8px; font-size: 11px; color: #fff; display: flex; align-items: center; gap: 4px; }
+.pu-active { border-color: #ffd700; background: rgba(255,215,0,0.25); }
+#touchControls { position: absolute; bottom: 0; left: 0; width: 100%; height: 130px; z-index: 12; display: none; pointer-events: none; }
+#dpad { position: absolute; bottom: 14px; left: 14px; width: 120px; height: 120px; pointer-events: all; }
+.dpad-btn { position: absolute; background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.dpad-btn.pressed { background: rgba(255,255,255,0.35); }
+#btnUp    { width: 38px; height: 38px; top: 0; left: 41px; }
+#btnDown  { width: 38px; height: 38px; bottom: 0; left: 41px; }
+#btnLeft  { width: 38px; height: 38px; top: 41px; left: 0; }
+#btnRight { width: 38px; height: 38px; top: 41px; right: 0; }
+#dpadCenter { position: absolute; top: 41px; left: 41px; width: 38px; height: 38px; background: rgba(255,255,255,0.08); border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
+#screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; background: rgba(10,40,60,0.92); color: #fff; text-align: center; padding: 14px 16px; overflow-y: auto; }
+#screen h2 { font-size: 22px; font-weight: 500; margin-bottom: 5px; }
+#screen .sub { font-size: 13px; color: rgba(255,255,255,0.72); margin-bottom: 8px; line-height: 1.5; max-width: 400px; }
+.fish-select { display: flex; gap: 7px; justify-content: center; flex-wrap: wrap; margin: 6px 0 8px; }
+.fish-card { background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 7px 9px; cursor: pointer; min-width: 76px; text-align: center; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+.fish-card:hover, .fish-card.selected { background: rgba(29,158,117,0.4); border-color: #1d9e75; }
+.fish-card .fish-icon { font-size: 24px; margin-bottom: 3px; }
+.fish-card .fish-name { font-size: 11px; font-weight: 500; color: #9fe1cb; }
+.fish-card .fish-desc { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 1px; }
+#screen button { background: #1d9e75; border: none; color: #fff; padding: 8px 22px; border-radius: 8px; font-size: 14px; cursor: pointer; margin: 3px; font-family: var(--font-sans, sans-serif); -webkit-tap-highlight-color: transparent; }
+#screen button:hover { background: #0f6e56; }
+#screen button.sec { background: rgba(255,255,255,0.15); }
+#screen button.sec:hover { background: rgba(255,255,255,0.25); }
+.fact { font-size: 11px; color: #9fe1cb; font-style: italic; margin-top: 6px; max-width: 380px; }
+#levelBanner { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(10,40,60,0.92); color: #fff; border-radius: 10px; padding: 14px 32px; font-size: 18px; font-weight: 500; z-index: 15; display: none; text-align: center; border: 1.5px solid rgba(255,255,255,0.2); max-width: 90%; }
+#audioBtn { position: absolute; top: 34px; left: 8px; z-index: 11; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 6px; padding: 3px 7px; font-size: 11px; cursor: pointer; }
+.hs-table { width: 100%; max-width: 320px; border-collapse: collapse; margin: 6px auto 0; font-size: 12px; }
+.hs-table th { color: #9fe1cb; font-weight: 500; padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.15); text-align: left; }
+.hs-table td { padding: 3px 8px; color: rgba(255,255,255,0.85); }
+.hs-table tr.hs-new td { color: #ffd700; font-weight: 500; }
+.hs-table tr:nth-child(even) td { background: rgba(255,255,255,0.04); }
+.hs-section { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; margin: 6px 0; width: 100%; max-width: 340px; }
+.hs-section h3 { font-size: 13px; font-weight: 500; color: #9fe1cb; margin-bottom: 4px; }
+</style>
+
+<div id="gameContainer">
+  <canvas id="gc" width="680" height="460"></canvas>
+  <div id="ui">
+    <div class="stat" id="uiFishName">🐟 Creek Runner</div>
+    <div class="stat" id="uiLevel">Level 1</div>
+    <div class="stat" id="uiInsects">🦟 0/25</div>
+    <div class="stat" id="uiLives">❤️❤️❤️</div>
+    <div class="stat" id="uiScore">Score: 0</div>
+  </div>
+  <button id="audioBtn" onclick="toggleAudio()">🔊</button>
+  <div id="powerupBar">
+    <div class="pu-slot" id="pu1">⚡ Speed</div>
+    <div class="pu-slot" id="pu2">🛡️ Shield</div>
+  </div>
+  <div id="touchControls">
+    <div id="dpad">
+      <div class="dpad-btn" id="btnUp">▲</div>
+      <div class="dpad-btn" id="btnDown">▼</div>
+      <div class="dpad-btn" id="btnLeft">◀</div>
+      <div class="dpad-btn" id="btnRight">▶</div>
+      <div id="dpadCenter"></div>
+    </div>
+  </div>
+  <div id="levelBanner"></div>
+  <div id="screen"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+const W = 680, H = 460;
+const HS_KEY = 'friarBranchHighScores';
+const MAX_HS = 8;
+
+function loadScores() { try { return JSON.parse(localStorage.getItem(HS_KEY)||'[]'); } catch(e){ return []; } }
+function saveScores(arr) { try { localStorage.setItem(HS_KEY, JSON.stringify(arr)); } catch(e){} }
+function addScore(name, score, fish, level) {
+  const scores = loadScores();
+  scores.push({ name, score, fish, level, date: new Date().toLocaleDateString() });
+  scores.sort((a,b)=>b.score-a.score);
+  const trimmed = scores.slice(0, MAX_HS);
+  saveScores(trimmed);
+  return trimmed.findIndex(s=>s.name===name&&s.score===score&&s.fish===fish);
+}
+function getRank(score) { return loadScores().filter(s=>s.score>score).length+1; }
+
+const FISH_SPECIES = [
+  { id:'minnow',  name:'Minnow',      icon:'🐟', color:'#5bc8af', accent:'#1d9e75', desc:'Fast & nimble',   speedBonus:1.15, fact:'Minnows are some of the most common fish in Tennessee streams and serve as a key food source for larger predators.' },
+  { id:'darter',  name:'Darter',      icon:'🐠', color:'#e8923a', accent:'#b8650d', desc:'Dart & dodge',    speedBonus:1.25, fact:'Darters are tiny, colorful fish that dart rapidly along the streambed — some species live in only a handful of creeks worldwide.' },
+  { id:'bluegill',name:'Bluegill',    icon:'🐡', color:'#378add', accent:'#185fa5', desc:'Tough & tanky',   speedBonus:0.95, fact:'Bluegill are sunfish with a distinctive blue sheen on their gill covers, popular in warm, slower waters.' },
+  { id:'trout',   name:'Brook Trout', icon:'🎣', color:'#d4537e', accent:'#72243e', desc:'Smooth & steady', speedBonus:1.05, fact:'Brook trout need cold, clean, well-oxygenated water — their presence is a great indicator of stream health!' },
+  { id:'chub',    name:'Creek Chub',  icon:'🐟', color:'#9fbc59', accent:'#3b6d11', desc:'Bulky & strong',  speedBonus:1.0,  fact:'Creek chubs are hardy generalists found in a wide variety of stream conditions throughout the Southeast.' },
+];
+
+// Level goals: 25, 50, 75, 100, 125
+const LEVEL_CONFIG = [
+  { name:'Level 1: Upper Riffle',  speedMult:1,    obstacleRate:220, obstaclePct:0.22, color1:'#0d5c7a', color2:'#1a8aad', insects:['mayfly','caddisfly'],                             obstacles:['bigfish','turtle'],                      fact:'🪨 Riffles are shallow, fast sections — prime insect habitat!' },
+  { name:'Level 2: Gravel Run',    speedMult:1.25, obstacleRate:180, obstaclePct:0.32, color1:'#0b4d68', color2:'#157799', insects:['mayfly','stonefly','caddisfly'],                   obstacles:['bigfish','turtle','crayfish'],            fact:'🪨 Gravel runs harbor stoneflies and caddisflies galore!' },
+  { name:'Level 3: Deep Pool',     speedMult:1.45, obstacleRate:150, obstaclePct:0.42, color1:'#0a3d52', color2:'#155e7a', insects:['mayfly','stonefly','caddisfly','waterstrider'],     obstacles:['bigfish','turtle','snake','crayfish'],    fact:'🌊 Deeper, slower pools hide larger predators. Stay sharp!' },
+  { name:'Level 4: Beaver Pond',   speedMult:1.65, obstacleRate:120, obstaclePct:0.52, color1:'#07303f', color2:'#0f4a5e', insects:['mayfly','stonefly','caddisfly','waterstrider','dragonfly'], obstacles:['bigfish','turtle','snake','crayfish'], fact:'🦫 Beaver ponds are rich in life — and ambush predators!' },
+  { name:'Level 5: Mouth of Creek',speedMult:1.85, obstacleRate:95,  obstaclePct:0.60, color1:'#051f2a', color2:'#0b3345', insects:['mayfly','stonefly','caddisfly','waterstrider','dragonfly'], obstacles:['bigfish','turtle','snake','crayfish'], fact:'🏁 The final stretch where Friar Branch meets the world!' },
+];
+
+const INSECT_COLORS = { mayfly:'#f5c842', stonefly:'#b8860b', caddisfly:'#8fbc8f', waterstrider:'#7ec8e3', dragonfly:'#b07dec' };
+
+function levelGoal(lvl) { return 25 + lvl * 25; }
+
+let selectedFish = FISH_SPECIES[0];
+let state = 'menu';
+let player, insects, obstacles, particles, powerups;
+let score, lives, level, insectsCollected, gameTime, spawnTimer, levelComplete;
+let activePowerups = { speed:0, shield:0 };
+let shakeX=0, shakeY=0, bgOffset=0, animFrame, lastTime=0;
+let bgBubbles = Array.from({length:8},()=>({ x:Math.random()*W, y:Math.random()*H, spd:12+Math.random()*18, r:1.5+Math.random()*2.5, phase:Math.random()*Math.PI*2 }));
+let audioEnabled=true, audioCtx=null;
+let pendingNewScore = null;
+
+function initAudio() { if(audioCtx) return; try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+function playTone(freq,type,dur,vol=0.18,detune=0) {
+  if(!audioEnabled||!audioCtx) return;
+  try { const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type=type;o.frequency.value=freq;o.detune.value=detune;g.gain.setValueAtTime(vol,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);o.start();o.stop(audioCtx.currentTime+dur); } catch(e){}
+}
+function playCollect()  { playTone(880,'sine',0.12,0.14); setTimeout(()=>playTone(1200,'sine',0.1,0.1),60); }
+function playHit()      { playTone(180,'sawtooth',0.25,0.22); playTone(120,'square',0.2,0.15,200); }
+function playPowerup()  { [600,800,1000,1300].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.15,0.13),i*55)); }
+function playLevelUp()  { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.22,0.16),i*80)); }
+function playSwim()     { if(Math.random()<0.04) playTone(200+Math.random()*60,'sine',0.08,0.04); }
+function toggleAudio()  { audioEnabled=!audioEnabled; document.getElementById('audioBtn').textContent=audioEnabled?'🔊':'🔇'; }
+
+const touchKeys = { up:false, down:false, left:false, right:false };
+function setupTouchControls() {
+  const tc=document.getElementById('touchControls');
+  tc.style.display='block'; tc.style.pointerEvents='all';
+  const dirs={btnUp:'up',btnDown:'down',btnLeft:'left',btnRight:'right'};
+  Object.entries(dirs).forEach(([id,dir])=>{
+    const btn=document.getElementById(id);
+    btn.addEventListener('touchstart',e=>{e.preventDefault();touchKeys[dir]=true;btn.classList.add('pressed');},{passive:false});
+    btn.addEventListener('touchend',  e=>{e.preventDefault();touchKeys[dir]=false;btn.classList.remove('pressed');},{passive:false});
+    btn.addEventListener('touchcancel',()=>{touchKeys[dir]=false;btn.classList.remove('pressed');});
+    btn.addEventListener('mousedown', ()=>{touchKeys[dir]=true;btn.classList.add('pressed');});
+    btn.addEventListener('mouseup',   ()=>{touchKeys[dir]=false;btn.classList.remove('pressed');});
+    btn.addEventListener('mouseleave',()=>{touchKeys[dir]=false;btn.classList.remove('pressed');});
+  });
+}
+
+const keys = {};
+document.addEventListener('keydown',e=>{keys[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();});
+document.addEventListener('keyup',  e=>{ keys[e.key]=false; });
+
+function initGame() {
+  player={x:120,y:H/2,w:26,h:13,vx:0,vy:0,invincible:0,trail:[],swimPhase:0};
+  insects=[];obstacles=[];particles=[];powerups=[];
+  score=0;lives=3;level=0;insectsCollected=0;gameTime=0;spawnTimer=0;levelComplete=false;
+  activePowerups={speed:0,shield:0};bgOffset=0;
+  updateUI();
+}
+function startGame() {
+  initAudio();
+  document.getElementById('screen').style.display='none';
+  initGame();
+  state='playing';
+  setupTouchControls();
+  showLevelBanner();
+  if(animFrame) cancelAnimationFrame(animFrame);
+  lastTime=performance.now();
+  loop(lastTime);
+}
+function loop(ts) {
+  const dt=Math.min((ts-lastTime)/1000,0.05);
+  lastTime=ts;
+  if(state==='playing'){update(dt);draw();}
+  animFrame=requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  gameTime+=dt; bgOffset=(bgOffset+28*dt)%W;
+  player.swimPhase+=dt*5;
+  const cfg=LEVEL_CONFIG[Math.min(level,LEVEL_CONFIG.length-1)];
+  const baseSpd=(activePowerups.speed>0?4.8:3.0)*cfg.speedMult*selectedFish.speedBonus;
+  const goLeft  =keys['ArrowLeft'] ||keys['a']||keys['A']||touchKeys.left;
+  const goRight =keys['ArrowRight']||keys['d']||keys['D']||touchKeys.right;
+  const goUp    =keys['ArrowUp']   ||keys['w']||keys['W']||touchKeys.up;
+  const goDown  =keys['ArrowDown'] ||keys['s']||keys['S']||touchKeys.down;
+  if(goLeft)       player.vx=Math.max(player.vx-600*dt,-baseSpd*60);
+  else if(goRight) player.vx=Math.min(player.vx+600*dt, baseSpd*60);
+  else             player.vx*=0.84;
+  if(goUp)         player.vy=Math.max(player.vy-600*dt,-baseSpd*60);
+  else if(goDown)  player.vy=Math.min(player.vy+600*dt, baseSpd*60);
+  else             player.vy*=0.84;
+  player.x=Math.max(18,Math.min(W-38,player.x+player.vx*dt));
+  player.y=Math.max(30,Math.min(H-30,player.y+player.vy*dt));
+  player.trail.unshift({x:player.x,y:player.y});
+  if(player.trail.length>9) player.trail.pop();
+  if(player.invincible>0) player.invincible-=dt;
+  if(activePowerups.speed>0) activePowerups.speed-=dt;
+  if(activePowerups.shield>0) activePowerups.shield-=dt;
+  playSwim();
+  spawnTimer+=dt;
+  const rate=cfg.obstacleRate/1000;
+  if(spawnTimer>rate){ spawnTimer=0; spawnInsect(); if(Math.random()<cfg.obstaclePct) spawnObstacle(); if(Math.random()<0.05) spawnPowerup(); }
+  const goal=levelGoal(level);
+  insects.forEach((ins,i)=>{
+    ins.x-=(ins.spd+gameTime*2)*dt;
+    ins.bobPhase+=dt*ins.bobSpeed; ins.y+=Math.sin(ins.bobPhase)*ins.bobAmp*dt;
+    if(ins.x<-25){insects.splice(i,1);return;}
+    if(rectsOverlap(player,ins)){
+      insects.splice(i,1); insectsCollected++; score+=10;
+      emit(ins.x,ins.y,INSECT_COLORS[ins.type],6); playCollect();
+      if(insectsCollected>=goal&&!levelComplete){levelComplete=true;setTimeout(()=>nextLevel(),700);}
+      updateUI();
+    }
+  });
+  obstacles.forEach((obs,i)=>{
+    obs.x+=obs.vx*dt; obs.y+=obs.vy*dt;
+    obs.wavePhase+=dt*1.5; obs.y+=Math.sin(obs.wavePhase)*0.45;
+    if(obs.y<32||obs.y>H-32) obs.vy*=-1;
+    if(obs.x<-70||obs.x>W+70){obstacles.splice(i,1);return;}
+    if(player.invincible<=0&&activePowerups.shield<=0&&rectsOverlap(player,obs)){
+      lives--; player.invincible=1.8; shakeX=10; shakeY=7;
+      emit(player.x,player.y,'#e74c3c',14); playHit();
+      if(lives<=0) gameOver();
+      updateUI();
+    }
+  });
+  powerups.forEach((pu,i)=>{
+    pu.x-=78*dt; pu.phase+=dt*2;
+    if(pu.x<-20){powerups.splice(i,1);return;}
+    if(rectsOverlap(player,pu)){powerups.splice(i,1);activatePowerup(pu.type);emit(pu.x,pu.y,pu.type==='speed'?'#ffd700':'#7ec8e3',12);playPowerup();}
+  });
+  bgBubbles.forEach(b=>{ b.y-=b.spd*dt; b.x+=Math.sin(b.phase+gameTime)*0.5; if(b.y<-10){b.y=H+10;b.x=Math.random()*W;} });
+  particles=particles.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;return p.life>0;});
+  if(shakeX>0){shakeX*=0.82;shakeY*=0.82;if(shakeX<0.4){shakeX=0;shakeY=0;}}
+}
+
+function spawnInsect(){
+  const cfg=LEVEL_CONFIG[Math.min(level,LEVEL_CONFIG.length-1)];
+  const type=cfg.insects[Math.floor(Math.random()*cfg.insects.length)];
+  insects.push({x:W+10,y:55+Math.random()*(H-110),w:18,h:12,type,spd:55+Math.random()*45,bobPhase:Math.random()*Math.PI*2,bobSpeed:2.5+Math.random()*2,bobAmp:1.5+Math.random()*2});
+}
+function spawnObstacle(){
+  const cfg=LEVEL_CONFIG[Math.min(level,LEVEL_CONFIG.length-1)];
+  const type=cfg.obstacles[Math.floor(Math.random()*cfg.obstacles.length)];
+  const fromLeft=Math.random()<0.22;
+  const sizes={bigfish:[48,20],turtle:[32,26],snake:[52,11],crayfish:[26,18]};
+  const [sw,sh]=sizes[type];
+  obstacles.push({x:fromLeft?-sw:W+sw,y:55+Math.random()*(H-110),w:sw,h:sh,vx:fromLeft?(45+Math.random()*50):-(60+Math.random()*70),vy:(Math.random()-0.5)*28,type,wavePhase:Math.random()*Math.PI*2});
+}
+function spawnPowerup(){
+  const type=Math.random()<0.5?'speed':'shield';
+  powerups.push({x:W+10,y:65+Math.random()*(H-130),w:20,h:20,type,phase:0});
+}
+function activatePowerup(type){ if(type==='speed'){activePowerups.speed=5;score+=25;}if(type==='shield'){activePowerups.shield=6;score+=25;}updateUI(); }
+function rectsOverlap(a,b){ return Math.abs(a.x-b.x)<(a.w/2+b.w/2-4)&&Math.abs(a.y-b.y)<(a.h/2+b.h/2-4); }
+function emit(x,y,color,count){ for(let i=0;i<count;i++){const ang=Math.random()*Math.PI*2,spd=40+Math.random()*110;particles.push({x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,color,life:0.4+Math.random()*0.4,size:2+Math.random()*3});} }
+
+function nextLevel(){
+  if(level>=LEVEL_CONFIG.length-1){showWinScreen();return;}
+  level++;insectsCollected=0;levelComplete=false;
+  insects=[];obstacles=[];powerups=[];
+  activePowerups={speed:0,shield:0};gameTime=0;spawnTimer=0;
+  updateUI();showLevelBanner();
+}
+function showLevelBanner(){
+  const cfg=LEVEL_CONFIG[Math.min(level,LEVEL_CONFIG.length-1)];
+  const goal=levelGoal(level);
+  const b=document.getElementById('levelBanner');
+  b.innerHTML=cfg.name+'<br><span style="font-size:12px;color:#9fe1cb;">Goal: '+goal+' insects &nbsp;·&nbsp; '+cfg.fact+'</span>';
+  b.style.display='block';
+  setTimeout(()=>b.style.display='none',3200);
+  playLevelUp();
+}
+function gameOver(){ state='menu'; const rank=getRank(score); showEndScreen(false, rank<=MAX_HS, rank); }
+function showWinScreen(){ state='menu'; const rank=getRank(score); showEndScreen(true, rank<=MAX_HS, rank); }
+function showEndScreen(won, isTop, rank){
+  const s=document.getElementById('screen');
+  const lvlReached=level+1;
+  let html=won
+    ? `<h2>🏆 You reached the mouth of Friar Branch!</h2><p class="sub">Your ${selectedFish.name} conquered all 5 levels!<br>Final Score: <strong style="color:#ffd700">${score}</strong></p>`
+    : `<h2>🐟 The current got you!</h2><p class="sub">You reached Level ${lvlReached} and collected ${insectsCollected}/${levelGoal(level)} insects.<br>Final Score: <strong style="color:#ffd700">${score}</strong></p>`;
+  if(isTop){
+    html+=`<div class="hs-section" style="margin:8px 0;"><h3>🎉 New High Score! You ranked #${rank}!</h3>
+      <input id="nameInput" type="text" maxlength="12" placeholder="Enter your name…" style="margin-top:6px;width:180px;text-align:center;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--font-sans,sans-serif);">
+      <br><button onclick="submitScore()" style="margin-top:6px;">Save Score ↗</button></div>`;
+  } else {
+    html+=`<p class="sub" style="color:rgba(255,255,255,0.5);font-size:11px;">Score didn't crack the top ${MAX_HS} — keep swimming!</p>`;
+  }
+  html+=buildHSTableHTML(null);
+  html+=`<div style="margin-top:8px;"><button onclick="replayMenu()">Play Again ↗</button></div>`;
+  html+=`<p class="fact">💡 Friar Branch flows through Walker County, GA — clean tributary streams like this support dozens of native species!</p>`;
+  s.innerHTML=html; s.style.display='flex';
+  pendingNewScore={score,fish:selectedFish.name,level:lvlReached};
+}
+function submitScore(){
+  const inp=document.getElementById('nameInput');
+  const name=(inp?inp.value.trim():'')||'Anon';
+  const{score:sc,fish,level:lv}=pendingNewScore;
+  const idx=addScore(name,sc,fish,lv);
+  refreshHSTable(idx);
+  const nameRow=document.getElementById('nameInput');
+  if(nameRow) nameRow.closest('.hs-section').innerHTML=`<h3>✅ Score saved as <em style="color:#ffd700">${name}</em>!</h3>`;
+}
+function buildHSTableHTML(newIdx){
+  const scores=loadScores();
+  if(!scores.length) return `<div class="hs-section"><h3>📋 High Scores</h3><p style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px;">No scores yet — be the first!</p></div>`;
+  const medals=['🥇','🥈','🥉'];
+  let rows=scores.map((s,i)=>`<tr class="${i===newIdx?'hs-new':''}"><td style="width:28px;text-align:center;">${medals[i]||'#'+(i+1)}</td><td>${s.name||'Anon'}</td><td style="color:#9fe1cb;">${s.fish}</td><td>Lvl ${s.level}</td><td style="text-align:right;font-weight:500;color:#ffd700;">${s.score}</td><td style="color:rgba(255,255,255,0.45);font-size:10px;">${s.date||''}</td></tr>`).join('');
+  return `<div class="hs-section" id="hsSection"><h3>🏅 High Scores</h3><table class="hs-table"><thead><tr><th></th><th>Name</th><th>Fish</th><th>Level</th><th style="text-align:right;">Score</th><th></th></tr></thead><tbody id="hsTbody">${rows}</tbody></table></div>`;
+}
+function refreshHSTable(newIdx){
+  const sec=document.getElementById('hsSection');
+  if(sec){ const tmp=document.createElement('div');tmp.innerHTML=buildHSTableHTML(newIdx);sec.replaceWith(tmp.firstChild); }
+}
+function updateUI(){
+  const cfg=LEVEL_CONFIG[Math.min(level,LEVEL_CONFIG.length-1)];
+  const goal=levelGoal(level);
+  document.getElementById('uiFishName').textContent=selectedFish.icon+' '+selectedFish.name;
+  document.getElementById('uiLevel').textContent=cfg.name;
+  document.getElementById('uiInsects').textContent=`🦟 ${insectsCollected}/${goal}`;
+  document.getElementById('uiLives').textContent='❤️'.repeat(Math.max(0,lives));
+  document.getElementById('uiScore').textContent=`Score: ${score}`;
+  const pu1=document.getElementById('pu1'),pu2=document.getElementById('pu2');
+  pu1.className='pu-slot'+(activePowerups.speed>0?' pu-active':'');
+  pu1.textContent=activePowerups.speed>0?`⚡ ${Math.ceil(activePowerups.speed)}s`:'⚡ Speed';
+  pu2.className='pu-slot'+(activePowerups.shield>0?' pu-active':'');
+  pu2.textContent=activePowerups.shield>0?`🛡️ ${Math.ceil(activePowerups.shield)}s`:'🛡️ Shield';
+}
+
+function buildFishSelect(){
+  const el=document.getElementById('fishSelect');
+  if(!el) return;
+  el.innerHTML='';
+  FISH_SPECIES.forEach(f=>{
+    const card=document.createElement('div');
+    card.className='fish-card'+(f.id===selectedFish.id?' selected':'');
+    card.innerHTML=`<div class="fish-icon">${f.icon}</div><div class="fish-name">${f.name}</div><div class="fish-desc">${f.desc}</div>`;
+    card.onclick=()=>{
+      selectedFish=f;
+      document.getElementById('fishFact').textContent='💡 '+f.fact;
+      document.querySelectorAll('.fish-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      document.getElementById('uiFishName').textContent=f.icon+' '+f.name;
+    };
+    el.appendChild(card);
+  });
+  const factEl=document.getElementById('fishFact');
+  if(factEl) factEl.textContent='💡 '+selectedFish.fact;
+}
+function replayMenu(){ buildMenuScreen(); }
+function buildMenuScreen(){
+  const s=document.getElementById('screen');
+  const scores=loadScores();
+  const topEntry=scores[0];
+  const topLine=topEntry?`<p class="sub" style="margin-bottom:4px;">🏅 Current Best: <strong style="color:#ffd700">${topEntry.score}</strong> by <em>${topEntry.name||'Anon'}</em> (${topEntry.fish})</p>`:'';
+  s.innerHTML=`<h2>🐟 Friar Branch</h2>
+    <p class="sub">Choose your fish and swim through Friar Branch collecting insects while dodging predators!</p>
+    ${topLine}
+    <div class="fish-select" id="fishSelect"></div>
+    <p class="sub" id="fishFact" style="min-height:28px;font-size:11px;"></p>
+    <button onclick="startGame()">Start Swimming →</button>
+    <button class="sec" onclick="showFullLeaderboard()">📋 Leaderboard</button>
+    <p class="fact">💡 5 Levels: 25 → 50 → 75 → 100 → 125 insects to clear each stage!</p>`;
+  s.style.display='flex';
+  buildFishSelect();
+}
+function showFullLeaderboard(){
+  const s=document.getElementById('screen');
+  s.innerHTML=`<h2>🏅 Leaderboard</h2>${buildHSTableHTML(null)}<div style="margin-top:10px;"><button class="sec" onclick="replayMenu()">← Back</button> <button onclick="clearScores()">🗑 Clear Scores</button></div>`;
+  s.style.display='flex';
+}
+function clearScores(){ try{localStorage.removeItem(HS_KEY);}catch(e){} showFullLeaderboard(); }
+
+// --- DRAW ---
+function draw(){
+  ctx.save();
+  ctx.translate(Math.round(shakeX*(Math.random()-0.5)),Math.round(shakeY*(Math.random()-0.5)));
+  const cfg=LEVEL_CONFIG[Math.min(level,LEVEL_CONFIG.length-1)];
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,cfg.color1);grad.addColorStop(1,cfg.color2);
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  drawWater();drawBubbles();drawPlants();
+  powerups.forEach(pu=>drawPowerup(pu));
+  insects.forEach(ins=>drawInsect(ins));
+  obstacles.forEach(obs=>drawObstacle(obs));
+  particles.forEach(p=>{ctx.globalAlpha=Math.min(p.life*2.5,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;
+  drawPlayer();drawProgressBar();
+  ctx.restore();
+}
+function drawWater(){
+  ctx.globalAlpha=0.07;ctx.fillStyle='#7ec8e3';
+  for(let i=0;i<5;i++){const x=((bgOffset*(0.4+i*0.18))%(W+80))-80;ctx.beginPath();ctx.ellipse(x+50,90+i*60,90+i*10,9,0,0,Math.PI*2);ctx.fill();}
+  ctx.globalAlpha=1;
+}
+function drawBubbles(){ bgBubbles.forEach(b=>{ctx.fillStyle=`rgba(255,255,255,${0.08+0.04*Math.sin(b.phase+gameTime)})`;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();}); }
+function drawPlants(){
+  ctx.save();ctx.globalAlpha=0.6;
+  [30,95,175,265,385,490,585,645].forEach((px,i)=>{
+    const sway=Math.sin(gameTime*1.4+i)*4;
+    ctx.strokeStyle=i%2===0?'#1d6b3e':'#2e8b57';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(px,H);ctx.quadraticCurveTo(px+sway,H-26,px+sway*1.6,H-52);ctx.stroke();
+    ctx.fillStyle=i%2===0?'#27ae60':'#2ecc71';
+    ctx.beginPath();ctx.ellipse(px+sway*1.6,H-54,7,4,0.3,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;ctx.restore();
+}
+
+function drawPlayer(){
+  const blink=player.invincible>0&&Math.floor(player.invincible*10)%2===0;
+  if(blink) return;
+  ctx.save();
+  const px=player.x,py=player.y,dir=(player.vx<-5)?-1:1;
+  const fc=selectedFish.color,fa=selectedFish.accent;
+  const wobble=Math.sin(player.swimPhase)*1.5;
+  player.trail.forEach((t,i)=>{ctx.globalAlpha=0.06*(9-i);ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(t.x,t.y,player.w/2*(1-i*0.09),player.h/2*(1-i*0.09),0,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;
+  if(activePowerups.shield>0){ctx.strokeStyle='rgba(126,200,227,0.65)';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);ctx.stroke();}
+  ctx.scale(dir,1);const rx=px*dir;
+  ctx.save();ctx.translate(rx,py+wobble);
+  const id=selectedFish.id;
+  if(id==='minnow'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(0,0,13,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.ellipse(6,0,7,4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.moveTo(-13,0);ctx.lineTo(-20,-5);ctx.lineTo(-20,5);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(8,-2,2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(8,-2,1,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(-8,-5);ctx.lineTo(-4,5);ctx.stroke();
+  }else if(id==='darter'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(0,0,11,5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.ellipse(5,0,6,3.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffd700';ctx.beginPath();ctx.ellipse(-2,0,4,3,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.moveTo(-11,0);ctx.lineTo(-18,-5);ctx.lineTo(-18,5);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(7,-2,1.8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(7,-2,1,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=fa;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(2,-5);ctx.lineTo(-2,-9);ctx.lineTo(-6,-5);ctx.stroke();
+  }else if(id==='bluegill'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(0,0,15,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.ellipse(7,0,9,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#0d47a1';ctx.beginPath();ctx.ellipse(5,0,4,7,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.moveTo(-15,0);ctx.lineTo(-22,-6);ctx.lineTo(-22,6);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=0.8;
+    [-6,-2,2,6].forEach(x=>{ctx.beginPath();ctx.moveTo(x,-7);ctx.lineTo(x+2,7);ctx.stroke();});
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(10,-3,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(10,-3,1.2,0,Math.PI*2);ctx.fill();
+  }else if(id==='trout'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(0,0,14,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.ellipse(6,0,8,4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,100,100,0.65)';
+    for(let s=0;s<5;s++){ctx.beginPath();ctx.arc(-4+s*2,-1+s%2,1.2,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle=fa;ctx.beginPath();ctx.moveTo(-14,0);ctx.lineTo(-22,-7);ctx.lineTo(-20,0);ctx.lineTo(-22,7);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(-6,-5);ctx.lineTo(-2,5);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(9,-2,2.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(9,-2,1.1,0,Math.PI*2);ctx.fill();
+  }else if(id==='chub'){
+    ctx.fillStyle=fc;ctx.beginPath();ctx.ellipse(0,0,15,7,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.ellipse(7,0,9,5,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-15,0);ctx.lineTo(14,0);ctx.stroke();
+    ctx.fillStyle=fa;ctx.beginPath();ctx.moveTo(-15,0);ctx.lineTo(-23,-6);ctx.lineTo(-23,6);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=0.8;
+    [-8,-3,3].forEach(x=>{ctx.beginPath();ctx.moveTo(x,-6);ctx.lineTo(x+2,6);ctx.stroke();});
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(10,-2,2.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(10,-2,1.1,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();ctx.restore();
+}
+
+// --- IMPROVED INSECT DRAWING (larger) ---
+function drawInsect(ins){
+  const c=INSECT_COLORS[ins.type];
+  ctx.save();ctx.translate(ins.x,ins.y+Math.sin(ins.bobPhase)*2);
+  const t=gameTime;
+
+  if(ins.type==='mayfly'){
+    // body
+    ctx.fillStyle='#d4a838'; ctx.beginPath();ctx.ellipse(0,1,7,3.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8b6010'; ctx.beginPath();ctx.ellipse(0,1,3.5,3,0,0,Math.PI*2);ctx.fill();
+    // tails
+    ctx.strokeStyle='#8b6010';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(-4,4);ctx.lineTo(-7,13);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,4);ctx.lineTo(0,13);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(4,4);ctx.lineTo(7,13);ctx.stroke();
+    // wings (flap with time)
+    const wf=Math.sin(t*14)*5;
+    ctx.fillStyle='rgba(220,240,255,0.75)';
+    ctx.save();ctx.translate(0,-1);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(-10,-8+wf,-14,-2);ctx.quadraticCurveTo(-10,2,0,0);ctx.fill();
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(10,-8+wf,14,-2);ctx.quadraticCurveTo(10,2,0,0);ctx.fill();
+    // hindwings
+    ctx.fillStyle='rgba(200,230,255,0.5)';
+    ctx.beginPath();ctx.moveTo(0,1);ctx.quadraticCurveTo(-7,-3+wf*0.6,-9,2);ctx.quadraticCurveTo(-5,5,0,1);ctx.fill();
+    ctx.beginPath();ctx.moveTo(0,1);ctx.quadraticCurveTo(7,-3+wf*0.6,9,2);ctx.quadraticCurveTo(5,5,0,1);ctx.fill();
+    ctx.restore();
+    // antennae
+    ctx.strokeStyle='#8b6010';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(-3,-2);ctx.lineTo(-7,-8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(3,-2);ctx.lineTo(7,-8);ctx.stroke();
+
+  }else if(ins.type==='stonefly'){
+    // flat body
+    ctx.fillStyle='#8b6914'; ctx.beginPath();ctx.ellipse(0,0,8,3.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c49a22'; ctx.beginPath();ctx.ellipse(0,-0.5,5,2.5,0,0,Math.PI*2);ctx.fill();
+    // tails
+    ctx.strokeStyle='#6b4c08';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(-3,3.5);ctx.lineTo(-5,11);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(3,3.5);ctx.lineTo(5,11);ctx.stroke();
+    // flat wings on back
+    ctx.fillStyle='rgba(200,180,100,0.7)';
+    ctx.beginPath();ctx.moveTo(-5,-1);ctx.lineTo(-13,-3);ctx.lineTo(-12,4);ctx.lineTo(-4,3);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(5,-1);ctx.lineTo(13,-3);ctx.lineTo(12,4);ctx.lineTo(4,3);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(100,80,20,0.5)';ctx.lineWidth=0.6;
+    ctx.beginPath();ctx.moveTo(-5,-1);ctx.lineTo(-13,-3);ctx.lineTo(-12,4);ctx.lineTo(-4,3);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(5,-1);ctx.lineTo(13,-3);ctx.lineTo(12,4);ctx.lineTo(4,3);ctx.closePath();ctx.stroke();
+    // legs
+    ctx.strokeStyle='#6b4c08';ctx.lineWidth=0.8;
+    [-4,-1,2].forEach(lx=>{ctx.beginPath();ctx.moveTo(lx,3);ctx.lineTo(lx-4,8);ctx.stroke();ctx.beginPath();ctx.moveTo(lx,3);ctx.lineTo(lx+4,8);ctx.stroke();});
+
+  }else if(ins.type==='caddisfly'){
+    // tent-shaped wings
+    ctx.fillStyle='rgba(140,188,140,0.85)';
+    ctx.save();ctx.translate(0,0);
+    ctx.beginPath();ctx.moveTo(0,-4);ctx.lineTo(-13,5);ctx.lineTo(-9,8);ctx.lineTo(0,3);ctx.lineTo(9,8);ctx.lineTo(13,5);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(60,110,60,0.6)';ctx.lineWidth=0.7;
+    ctx.beginPath();ctx.moveTo(0,-4);ctx.lineTo(-13,5);ctx.moveTo(0,-4);ctx.lineTo(13,5);ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle='#5a8c5a';ctx.beginPath();ctx.ellipse(0,2,5,3.5,0,0,Math.PI*2);ctx.fill();
+    // antennae
+    ctx.strokeStyle='#3a6030';ctx.lineWidth=0.9;
+    ctx.beginPath();ctx.moveTo(-3,-2);ctx.quadraticCurveTo(-10,-9,-14,-6);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(3,-2);ctx.quadraticCurveTo(10,-9,14,-6);ctx.stroke();
+
+  }else if(ins.type==='waterstrider'){
+    // oval body
+    ctx.fillStyle='#3a7fc1';ctx.beginPath();ctx.ellipse(0,0,7,3.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5aabeb';ctx.beginPath();ctx.ellipse(1,-0.5,4.5,2.5,0,0,Math.PI*2);ctx.fill();
+    // long legs spreading wide
+    ctx.strokeStyle='#2255aa';ctx.lineWidth=1.2;
+    // front legs
+    ctx.beginPath();ctx.moveTo(4,0);ctx.lineTo(16,6);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(-16,6);ctx.stroke();
+    // middle legs
+    ctx.beginPath();ctx.moveTo(3,1);ctx.lineTo(17,-3);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-3,1);ctx.lineTo(-17,-3);ctx.stroke();
+    // back legs
+    ctx.beginPath();ctx.moveTo(1,2);ctx.lineTo(14,10);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-1,2);ctx.lineTo(-14,10);ctx.stroke();
+    // dimples under legs
+    ctx.fillStyle='rgba(180,220,255,0.5)';
+    [[16,6],[-16,6],[17,-3],[-17,-3],[14,10],[-14,10]].forEach(([lx,ly])=>{ctx.beginPath();ctx.ellipse(lx,ly,3,1.5,0,0,Math.PI*2);ctx.fill();});
+
+  }else if(ins.type==='dragonfly'){
+    const wf=Math.sin(t*18)*4;
+    // abdomen - segmented
+    ctx.fillStyle='#7b45cc';
+    for(let s=0;s<5;s++){ctx.beginPath();ctx.ellipse(-6+s*3,2-s*0.3,3-s*0.2,2-s*0.1,0,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#bb88ff';ctx.beginPath();ctx.ellipse(4,-1,5,3,0,0,Math.PI*2);ctx.fill();
+    // head
+    ctx.fillStyle='#5c2fa0';ctx.beginPath();ctx.arc(8,-1,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(180,255,200,0.7)';ctx.beginPath();ctx.arc(9,-2,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(9,-2,1.5,0,Math.PI*2);ctx.fill();
+    // 4 wings
+    ctx.fillStyle=`rgba(200,240,255,0.7)`;
+    ctx.save();ctx.translate(3,-1);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(-8,-10+wf,-18,-5);ctx.quadraticCurveTo(-14,2,0,0);ctx.fill();
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(-6,-8+wf*0.8,-15,4);ctx.quadraticCurveTo(-11,8,0,0);ctx.fill();
+    ctx.fillStyle=`rgba(190,235,255,0.65)`;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(8,-10+wf,18,-5);ctx.quadraticCurveTo(14,2,0,0);ctx.fill();
+    ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(6,-8+wf*0.8,15,4);ctx.quadraticCurveTo(11,8,0,0);ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;ctx.restore();
+}
+
+// --- IMPROVED OBSTACLES ---
+function drawObstacle(obs){
+  ctx.save();ctx.translate(obs.x,obs.y);
+  const dir=obs.vx>0?1:-1;ctx.scale(dir,1);
+  const t=obs.wavePhase;
+
+  if(obs.type==='bigfish'){
+    // predator fish - larger, meaner
+    ctx.fillStyle='#8b1a1a';ctx.beginPath();ctx.ellipse(0,0,24,11,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c0392b';ctx.beginPath();ctx.ellipse(8,0,14,9,0,0,Math.PI*2);ctx.fill();
+    // forked tail
+    ctx.fillStyle='#6d1212';
+    ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-30,-9);ctx.lineTo(-26,-2);ctx.lineTo(-26,2);ctx.lineTo(-30,9);ctx.closePath();ctx.fill();
+    // dorsal fin
+    ctx.fillStyle='#911515';
+    ctx.beginPath();ctx.moveTo(-5,-10);ctx.quadraticCurveTo(2,-20,10,-10);ctx.lineTo(-5,-10);ctx.closePath();ctx.fill();
+    // pectoral fin
+    ctx.fillStyle='#a01818';
+    ctx.beginPath();ctx.moveTo(4,5);ctx.quadraticCurveTo(12,14,6,11);ctx.lineTo(4,5);ctx.closePath();ctx.fill();
+    // eye
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(15,-2,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c00';ctx.beginPath();ctx.arc(15,-2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(15,-2,1.2,0,Math.PI*2);ctx.fill();
+    // mouth
+    ctx.strokeStyle='#5a0a0a';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(20,-2);ctx.lineTo(24,0);ctx.lineTo(20,2);ctx.stroke();
+    // scales
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=0.7;
+    [-4,2,8].forEach(sx=>{ctx.beginPath();ctx.arc(sx,1,6,Math.PI*0.7,Math.PI*1.3);ctx.stroke();});
+
+  }else if(obs.type==='turtle'){
+    // PROPER turtle with domed shell and head
+    // shell base
+    ctx.fillStyle='#2d6e3e';ctx.beginPath();ctx.ellipse(0,0,18,14,0,0,Math.PI*2);ctx.fill();
+    // shell dome highlight
+    const shellGrad=ctx.createRadialGradient(-3,-4,2,-3,-4,16);
+    shellGrad.addColorStop(0,'rgba(80,180,100,0.5)');
+    shellGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=shellGrad;ctx.beginPath();ctx.ellipse(0,0,18,14,0,0,Math.PI*2);ctx.fill();
+    // scute pattern (polygonal plates)
+    ctx.strokeStyle='#1a4a26';ctx.lineWidth=1.2;
+    // central scute
+    ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(8,-3);ctx.lineTo(8,5);ctx.lineTo(0,9);ctx.lineTo(-8,5);ctx.lineTo(-8,-3);ctx.closePath();ctx.stroke();
+    // side scutes
+    ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(8,-3);ctx.lineTo(16,-6);ctx.lineTo(16,0);ctx.lineTo(8,5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(-8,-3);ctx.lineTo(-16,-6);ctx.lineTo(-16,0);ctx.lineTo(-8,5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,9);ctx.lineTo(8,5);ctx.lineTo(16,0);ctx.lineTo(16,8);ctx.lineTo(8,13);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,9);ctx.lineTo(-8,5);ctx.lineTo(-16,0);ctx.lineTo(-16,8);ctx.lineTo(-8,13);ctx.stroke();
+    // head (poking out front)
+    ctx.fillStyle='#3a7a4a';ctx.beginPath();ctx.ellipse(21,0,7,5.5,0.2,0,Math.PI*2);ctx.fill();
+    // head shading
+    ctx.fillStyle='rgba(0,0,0,0.2)';ctx.beginPath();ctx.ellipse(21,2,7,3,0.2,0,Math.PI*2);ctx.fill();
+    // eye
+    ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(24,-1,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(24,-1,1.3,0,Math.PI*2);ctx.fill();
+    // nostril
+    ctx.fillStyle='#1a4a26';ctx.beginPath();ctx.arc(27,1,0.8,0,Math.PI*2);ctx.fill();
+    // neck
+    ctx.fillStyle='#3a7a4a';ctx.fillRect(14,-3,8,6);
+    // 4 flippers
+    ctx.fillStyle='#2d6e3e';
+    // front left
+    ctx.beginPath();ctx.moveTo(-6,-11);ctx.quadraticCurveTo(-14,-18,-11,-12);ctx.quadraticCurveTo(-10,-10,-6,-10);ctx.fill();
+    // front right
+    ctx.beginPath();ctx.moveTo(8,-11);ctx.quadraticCurveTo(16,-18,13,-12);ctx.quadraticCurveTo(12,-10,8,-10);ctx.fill();
+    // back left
+    ctx.beginPath();ctx.moveTo(-6,11);ctx.quadraticCurveTo(-14,18,-11,12);ctx.quadraticCurveTo(-10,10,-6,10);ctx.fill();
+    // back right
+    ctx.beginPath();ctx.moveTo(8,11);ctx.quadraticCurveTo(16,18,13,12);ctx.quadraticCurveTo(12,10,8,10);ctx.fill();
+
+  }else if(obs.type==='snake'){
+    // PROPER snake - undulating body using bezier curves
+    const amp=Math.sin(t)*14;
+    const amp2=Math.sin(t+1.5)*10;
+    // draw thick body with proper undulation
+    ctx.lineCap='round';ctx.lineJoin='round';
+    // outer (dark) body
+    ctx.strokeStyle='#5c3010';ctx.lineWidth=12;
+    ctx.beginPath();
+    ctx.moveTo(22,0);
+    ctx.bezierCurveTo(10,amp,-10,amp2,-24,amp*0.5);
+    ctx.stroke();
+    // inner patterning (lighter bands)
+    ctx.strokeStyle='#a05020';ctx.lineWidth=9;
+    ctx.beginPath();ctx.moveTo(22,0);ctx.bezierCurveTo(10,amp,-10,amp2,-24,amp*0.5);ctx.stroke();
+    // yellow belly stripe
+    ctx.strokeStyle='#e8c060';ctx.lineWidth=4;
+    ctx.setLineDash([6,5]);
+    ctx.beginPath();ctx.moveTo(22,0);ctx.bezierCurveTo(10,amp,-10,amp2,-24,amp*0.5);ctx.stroke();
+    ctx.setLineDash([]);
+    // saddle bands (dark crossbands)
+    ctx.strokeStyle='rgba(40,15,5,0.7)';ctx.lineWidth=13;
+    const pts=[0.2,0.4,0.6,0.8];
+    pts.forEach(tt=>{
+      const bx=22*(1-tt)+(-24)*tt;
+      const by=0*(1-tt)+amp*0.5*tt + Math.sin(t+tt*3)*14*tt;
+      ctx.beginPath();ctx.arc(bx,by,3,0,Math.PI*2);ctx.fill();
+    });
+    // head
+    const hx=22, hy=0;
+    ctx.fillStyle='#3d1a06';ctx.beginPath();ctx.ellipse(hx,hy,9,6,0,0,Math.PI*2);ctx.fill();
+    // head scale texture
+    ctx.fillStyle='#5c2a10';ctx.beginPath();ctx.ellipse(hx-2,hy,7,4.5,0,0,Math.PI*2);ctx.fill();
+    // eye with slit pupil
+    ctx.fillStyle='#ffa020';ctx.beginPath();ctx.arc(hx+4,hy-1,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();
+    ctx.moveTo(hx+4,hy-1-2.5);ctx.lineTo(hx+4,hy-1+2.5);ctx.lineWidth=1.5;ctx.strokeStyle='#000';ctx.stroke();
+    // forked tongue
+    const tongueFlick=Math.sin(t*8)*3;
+    ctx.strokeStyle='#e00';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(hx+9,hy);ctx.lineTo(hx+15,hy+tongueFlick);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(hx+13,hy+tongueFlick);ctx.lineTo(hx+17,hy+tongueFlick+3);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(hx+13,hy+tongueFlick);ctx.lineTo(hx+17,hy+tongueFlick-3);ctx.stroke();
+
+  }else if(obs.type==='crayfish'){
+    // segmented tail
+    ctx.fillStyle='#c0392b';
+    for(let s=0;s<4;s++){ctx.beginPath();ctx.ellipse(-8+s*(-5),0,5-s*0.5,3.5-s*0.2,0,0,Math.PI*2);ctx.fill();}
+    // tail fan
+    ctx.fillStyle='#922b21';
+    ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(-36,-7);ctx.lineTo(-33,-2);ctx.lineTo(-33,2);ctx.lineTo(-36,7);ctx.closePath();ctx.fill();
+    // carapace (main shell)
+    ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.ellipse(6,0,16,10,0,0,Math.PI*2);ctx.fill();
+    // carapace ridge
+    ctx.strokeStyle='#c0392b';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(18,0);ctx.stroke();
+    // carapace detail lines
+    ctx.strokeStyle='rgba(200,100,80,0.5)';ctx.lineWidth=0.8;
+    [[-4,-7],[-4,7],[4,-8],[4,8],[10,-7],[10,7]].forEach(([x,y])=>{ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();});
+    // rostrum (spike on head)
+    ctx.fillStyle='#c0392b';ctx.beginPath();ctx.moveTo(18,-2);ctx.lineTo(25,0);ctx.lineTo(18,2);ctx.closePath();ctx.fill();
+    // eyes on stalks
+    ctx.strokeStyle='#922b21';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(17,-5);ctx.lineTo(20,-9);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(17,5);ctx.lineTo(20,9);ctx.stroke();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(20,-9,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(20,9,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f00';ctx.beginPath();ctx.arc(20,-9,1.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f00';ctx.beginPath();ctx.arc(20,9,1.2,0,Math.PI*2);ctx.fill();
+    // big claws with gap
+    ctx.strokeStyle='#c0392b';ctx.lineWidth=3.5;
+    ctx.beginPath();ctx.moveTo(16,-4);ctx.lineTo(26,-10);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(16,4);ctx.lineTo(26,10);ctx.stroke();
+    // claw heads
+    ctx.fillStyle='#922b21';ctx.beginPath();ctx.arc(26,-10,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#922b21';ctx.beginPath();ctx.arc(26,10,6,0,Math.PI*2);ctx.fill();
+    // claw pincer details
+    ctx.strokeStyle='#5c1010';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(22,-7);ctx.lineTo(30,-12);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(22,7);ctx.lineTo(30,12);ctx.stroke();
+    // walking legs (5 pairs)
+    ctx.strokeStyle='#a93226';ctx.lineWidth=1.3;
+    [-8,-4,0,4,8].forEach((lx,i)=>{
+      const legPhase=Math.sin(t*3+i*0.8)*2;
+      ctx.beginPath();ctx.moveTo(lx,-10);ctx.lineTo(lx-4,-18+legPhase);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(lx,10);ctx.lineTo(lx-4,18+legPhase);ctx.stroke();
+    });
+    // antennae
+    ctx.strokeStyle='#e74c3c';ctx.lineWidth=0.9;
+    ctx.beginPath();ctx.moveTo(20,-6);ctx.quadraticCurveTo(30,-15,36,-18);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(20,6);ctx.quadraticCurveTo(30,15,36,18);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPowerup(pu){
+  ctx.save();ctx.translate(pu.x,pu.y+Math.sin(pu.phase)*4);
+  ctx.fillStyle=pu.type==='speed'?'rgba(255,215,0,0.22)':'rgba(126,200,227,0.22)';
+  ctx.beginPath();ctx.arc(0,0,13,0,Math.PI*2);ctx.fill();
+  ctx.font='15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(pu.type==='speed'?'⚡':'🛡️',0,1);
+  ctx.restore();
+}
+function drawProgressBar(){
+  const goal=levelGoal(level);
+  const pct=Math.min(insectsCollected/goal,1);
+  const barW=160,barH=8,barX=(W-barW)/2,barY=H-18;
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.beginPath();if(ctx.roundRect)ctx.roundRect(barX,barY,barW,barH,4);else ctx.rect(barX,barY,barW,barH);ctx.fill();
+  if(pct>0){ctx.fillStyle='#1d9e75';ctx.beginPath();if(ctx.roundRect)ctx.roundRect(barX,barY,barW*pct,barH,4);else ctx.rect(barX,barY,barW*pct,barH);ctx.fill();}
+  ctx.fillStyle='rgba(255,255,255,0.88)';ctx.font='10px var(--font-sans,sans-serif)';ctx.textAlign='center';
+  ctx.fillText(`${insectsCollected}/${goal} insects`,W/2,barY-4);
+}
+
+buildMenuScreen();
+</script>
